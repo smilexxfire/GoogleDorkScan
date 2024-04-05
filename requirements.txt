@@ -1,0 +1,7 @@
+beautifulsoup4==4.12.3
+fire==0.6.0
+google==3.0.0
+loguru==0.7.2
+six==1.16.0
+soupsieve==2.5
+termcolor==2.4.0
