@@ -2,6 +2,7 @@ import time
 from datetime import datetime
 
 from googlesearch import search
+import os
 
 from utils import util
 from config.log import logger
@@ -35,18 +36,35 @@ class GoogleDorkScan(object):
 
     Example:
         python3 googledorkscan.py --target example.com run
+        python3 googledorkscan.py --target example.com --proxy http://127.0.0.1:7890 run
+
+    Note:
+        --target        target domain, dork is site:target(required)
+        --delay         every query delay, default is 10 seconds
+        --pagesize      the number of URLs in each query result, default is 5
+        --proxy         http proxy, not support socks, default is none
     """
-    def __init__(self, target=None, pagesize=5):
+    def __init__(self, target=None, delay=10, pagesize=5, proxy=None):
         self.target = target
+        self.delay = delay
         self.pagesize = pagesize
+        self.proxy = proxy
     def config_param(self):
-        pass
+        if self.proxy:
+            os.environ["HTTPS_PROXY"] = "http://localhost:7890"
+
     def check_param(self):
         """
         Check parameter
         """
         if self.target is None:
-            logger.log('FATAL', 'You must provide either target or targets parameter')
+            logger.log('FATAL', 'You must provide target parameter')
+            exit(1)
+        if self.proxy and (not util.is_valid_url(self.proxy)):
+            logger.log('FATAL', "proxy param is not valid")
+            exit(1)
+        if not isinstance(self.pagesize, int):
+            logger.log('FATAL', "pagesize param must be integer")
             exit(1)
 
     def main(self):
@@ -54,6 +72,7 @@ class GoogleDorkScan(object):
 
         :return:
         """
+        # 检查泄露的登陆页面
         logger.log('ALERT', "Checking Login Page")
         for login in login_pages.keys():
             query = f"site:{self.target} {login_pages[login]}"
@@ -66,8 +85,9 @@ class GoogleDorkScan(object):
             else:
                 for _ in url_list:
                     logger.log('INFOR', _)
-            time.sleep(10)
+            time.sleep(self.delay)
 
+        # 检查泄露的文件
         logger.log('ALERT', "Checking file leak")
         for file_key in file_types.keys():
             query = f"site:{self.target} {file_types[file_key]}"
@@ -80,8 +100,9 @@ class GoogleDorkScan(object):
             else:
                 for _ in url_list:
                     logger.log('INFOR', _)
-            time.sleep(10)
+            time.sleep(self.delay)
 
+        # 检查泄露的目录遍历url
         logger.log('ALERT', "Checking dir traversal")
         for dir_key in dir_traversal.keys():
             query = f"site:{self.target} {dir_traversal[dir_key]}"
@@ -94,9 +115,7 @@ class GoogleDorkScan(object):
             else:
                 for _ in url_list:
                     logger.log('INFOR', _)
-            time.sleep(10)
-
-
+            time.sleep(self.delay)
     def run(self):
         """running entrance
 
@@ -111,7 +130,6 @@ class GoogleDorkScan(object):
         logger.log('INFOR', 'Start running GoogleDorkScan')
         self.config_param()
         self.check_param()
-
         self.main()
 
 if __name__ == '__main__':
